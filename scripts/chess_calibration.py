@@ -216,12 +216,10 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## We can plan a motion for this group to a desired pose for the
     ## end-effector:
     pose_goal = geometry_msgs.msg.Pose()
-    pose_goal.orientation.x = -0.2207
-    pose_goal.orientation.y = 0.9753
-    pose_goal.orientation.z = 0.0081
-    pose_goal.orientation.w = 0.0014
+    # set proper quaternion: https://quaternions.online/
+    pose_goal.orientation.x = -0.383
+    pose_goal.orientation.y = 0.924
     
-
     pose_goal.position.x = x
     pose_goal.position.y = y
     pose_goal.position.z = z
@@ -300,8 +298,8 @@ def main():
     # Set max velocity
     tutorial.move_group.set_max_velocity_scaling_factor(0.5)
     # Set tolerances, without that IK cannot do a valid plan
-    tutorial.move_group.set_goal_position_tolerance(0.01)
-    tutorial.move_group.set_goal_orientation_tolerance(0.1)
+    tutorial.move_group.set_goal_position_tolerance(0.001)
+    tutorial.move_group.set_goal_orientation_tolerance(0.005)
     
     print "============ Press `Enter` to go home ..."
     raw_input()
@@ -329,19 +327,19 @@ def main():
 
     print "============ Press `Enter` to go A8 (up) ..."
     raw_input()
-    tutorial.go_to_pose_goal(x = 0.15, y = 0.23, z = 0.25)
+    tutorial.go_to_pose_goal(x = 0.15, y = 0.23, z = 0.22)
 
     print "============ Press `Enter` to go H8 (up) ..."
     raw_input()
-    tutorial.go_to_pose_goal(x = -0.04, y = 0.23, z = 0.25)
+    tutorial.go_to_pose_goal(x = -0.04, y = 0.23, z = 0.22)
   
     print "============ Press `Enter` to go H1 (up) ..."
     raw_input()
-    tutorial.go_to_pose_goal(x = -0.04, y = 0.42, z = 0.25)
+    tutorial.go_to_pose_goal(x = -0.04, y = 0.42, z = 0.22)
     
     print "============ Press `Enter` to go A1 (up) ..."
     raw_input()
-    tutorial.go_to_pose_goal(x = 0.15, y = 0.42, z = 0.25)
+    tutorial.go_to_pose_goal(x = 0.15, y = 0.42, z = 0.22)
 
     print "============ Press `Enter` to go home ..."
     raw_input()
