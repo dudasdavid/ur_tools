@@ -160,13 +160,70 @@ class MoveGroupPythonIntefaceTutorial(object):
 
   def set_gripper(self, status):
       if status == "open":
-        self.goal_position_msg.value = [650]
+        self.goal_position_msg.value = [630]
       else:
         self.goal_position_msg.value = [740]
 
       self.robotis_publisher.publish(self.goal_position_msg)
 
-  def go_to_joint_state(self):
+  def do_chess_step(self, start, end):
+      # Y coordinate
+      rows = {"1": 0.420, "2": 0.393, "3": 0.366, "4": 0.339, "5": 0.311, "6": 0.284, "7": 0.257, "8": 0.230, "X": 0.3}
+      # X coordinate
+      columns  = {"A": 0.15, "B": 0.123, "C": 0.096, "D": 0.069, "E": 0.041, "F": 0.014, "G": -0.013, "H": -0.040, "X": -0.1}
+
+      z_high = 0.222
+      z_low = 0.17
+      z_drop = 0.172
+
+      # 1) Go above start position
+      self.set_gripper("open")
+      self.go_to_pose_goal(columns[start[0]], rows[start[1]], z_high)
+      time.sleep(0.2)
+
+      # 2) Go down
+      #self.go_to_pose_goal(columns[start[0]], rows[start[1]], z_high - (z_high - z_low)/2)
+      #time.sleep(0.1)
+      self.go_to_pose_goal(columns[start[0]], rows[start[1]], z_low)
+      time.sleep(0.1)
+
+      # 3) Grab the figure
+      self.set_gripper("closed")
+      time.sleep(0.2)
+
+      # 4) Move up
+      #self.go_to_pose_goal(columns[start[0]], rows[start[1]], z_high - (z_high - z_low)/2)
+      #time.sleep(0.1)
+      self.go_to_pose_goal(columns[start[0]], rows[start[1]], z_high)
+      time.sleep(0.1)
+
+      # 5) Go above end position
+      self.go_to_pose_goal(columns[end[0]], rows[end[1]], z_high)
+      time.sleep(0.2)
+
+      # 6) Move down
+      #self.go_to_pose_goal(columns[end[0]], rows[end[1]], z_high - (z_high - z_drop)/2)
+      #time.sleep(0.1)
+      self.go_to_pose_goal(columns[end[0]], rows[end[1]], z_drop)
+      time.sleep(0.1)
+
+      # 7) Open gripper
+      self.set_gripper("open")
+      time.sleep(0.2)
+
+      # 8) Move up
+      #self.go_to_pose_goal(columns[end[0]], rows[end[1]], z_high - (z_high - z_drop)/2)
+      #time.sleep(0.1)
+      self.go_to_pose_goal(columns[end[0]], rows[end[1]], z_high)
+      time.sleep(0.1)
+
+      # 9) Go home if it's not a hit
+      if end != "XX":
+        self.go_to_home()
+      time.sleep(0.2)
+
+
+  def go_to_home(self):
     # Copy class variables to local variables to make the web tutorials more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
@@ -220,6 +277,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     pose_goal.orientation.x = -0.383
     pose_goal.orientation.y = 0.924
     
+
     pose_goal.position.x = x
     pose_goal.position.y = y
     pose_goal.position.z = z
@@ -233,8 +291,6 @@ class MoveGroupPythonIntefaceTutorial(object):
     # It is always good to clear your targets after planning with poses.
     # Note: there is no equivalent function for clear_joint_value_targets()
     move_group.clear_pose_targets()
-
-    self.set_gripper("closed")
 
     ## END_SUB_TUTORIAL
 
@@ -303,47 +359,33 @@ def main():
     
     print "============ Press `Enter` to go home ..."
     raw_input()
-    tutorial.go_to_joint_state()
-    
-    print "============ Press `Enter` to go A8 (down) ..."
-    raw_input()
-    tutorial.go_to_pose_goal(x = 0.15, y = 0.23, z = 0.165)
-    
-    print "============ Press `Enter` to go H8 (down) ..."
-    raw_input()
-    tutorial.go_to_pose_goal(x = -0.04, y = 0.23, z = 0.165)
-  
-    print "============ Press `Enter` to go H1 (down) ..."
-    raw_input()
-    tutorial.go_to_pose_goal(x = -0.04, y = 0.42, z = 0.165)
-    
-    print "============ Press `Enter` to go A1 (down) ..."
-    raw_input()
-    tutorial.go_to_pose_goal(x = 0.15, y = 0.42, z = 0.165)
+    tutorial.go_to_home()
 
-    print "============ Press `Enter` to go A8 (down) ..."
+    print "============ Press `Enter` to step from A7 to A5..."
     raw_input()
-    tutorial.go_to_pose_goal(x = 0.15, y = 0.23, z = 0.165)
-
-    print "============ Press `Enter` to go A8 (up) ..."
+    tutorial.do_chess_step("A7", "A5")
+    print "============ Press `Enter` to step from B7 to B5..."
     raw_input()
-    tutorial.go_to_pose_goal(x = 0.15, y = 0.23, z = 0.22)
-
-    print "============ Press `Enter` to go H8 (up) ..."
+    tutorial.do_chess_step("B7", "B5")
+    print "============ Press `Enter` to step from C7 to C5..."
     raw_input()
-    tutorial.go_to_pose_goal(x = -0.04, y = 0.23, z = 0.22)
-  
-    print "============ Press `Enter` to go H1 (up) ..."
+    tutorial.do_chess_step("C7", "C5")
+    print "============ Press `Enter` to step from D7 to D5..."
     raw_input()
-    tutorial.go_to_pose_goal(x = -0.04, y = 0.42, z = 0.22)
+    tutorial.do_chess_step("D7", "D5")
+    print "============ Press `Enter` to step from E7 to E5..."
+    raw_input()
+    tutorial.do_chess_step("E7", "E5")
+    print "============ Press `Enter` to step from F7 to F5..."
+    raw_input()
+    tutorial.do_chess_step("F7", "F5")
+    print "============ Press `Enter` to step from G7 to G5..."
+    raw_input()
+    tutorial.do_chess_step("G7", "G5")
+    print "============ Press `Enter` to step from H7 to H5..."
+    raw_input()
+    tutorial.do_chess_step("H7", "H5")
     
-    print "============ Press `Enter` to go A1 (up) ..."
-    raw_input()
-    tutorial.go_to_pose_goal(x = 0.15, y = 0.42, z = 0.22)
-
-    print "============ Press `Enter` to go home ..."
-    raw_input()
-    tutorial.go_to_joint_state()
 
   except rospy.ROSInterruptException:
     return
