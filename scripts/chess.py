@@ -1,46 +1,5 @@
 #!/usr/bin/env python
 
-# Software License Agreement (BSD License)
-#
-# Copyright (c) 2013, SRI International
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above
-#    copyright notice, this list of conditions and the following
-#    disclaimer in the documentation and/or other materials provided
-#    with the distribution.
-#  * Neither the name of SRI International nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-#
-# Author: Acorn Pooley, Mike Lautman
-
-## BEGIN_SUB_TUTORIAL imports
-##
-## To use the Python MoveIt interfaces, we will import the `moveit_commander`_ namespace.
-## This namespace provides us with a `MoveGroupCommander`_ class, a `PlanningSceneInterface`_ class,
-## and a `RobotCommander`_ class. More on these below. We also import `rospy`_ and some messages that we will use:
-##
-
 import sys
 import copy
 import rospy
@@ -56,8 +15,6 @@ from trajectory_msgs.msg import JointTrajectoryPoint, JointTrajectory
 from robotis_controller_msgs.msg import SyncWriteItem
 from geometry_msgs.msg import Pose
 from moveit_msgs.msg import RobotState, Constraints
-
-## END_SUB_TUTORIAL
 
 
 def all_close(goal, actual, tolerance):
@@ -83,16 +40,13 @@ def all_close(goal, actual, tolerance):
   return True
 
 
-class MoveGroupPythonIntefaceTutorial(object):
-  """MoveGroupPythonIntefaceTutorial"""
+class MoveGroupPythonInteface(object):
+  """MoveGroupPythonInteface"""
   def __init__(self):
-    super(MoveGroupPythonIntefaceTutorial, self).__init__()
 
-    ## BEGIN_SUB_TUTORIAL setup
-    ##
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
     moveit_commander.roscpp_initialize(sys.argv)
-    rospy.init_node('move_group_python_interface_tutorial', anonymous=True)
+    rospy.init_node('move_group_python_interface', anonymous=True)
 
     ## Instantiate a `RobotCommander`_ object. Provides information such as the robot's
     ## kinematic model and the robot's current joint states
@@ -118,16 +72,19 @@ class MoveGroupPythonIntefaceTutorial(object):
                                                    moveit_msgs.msg.DisplayTrajectory,
                                                    queue_size=20)
 
+    # Create a publisher for the real ROBOTIS gripper
     robotis_publisher = rospy.Publisher('/robotis/direct/sync_write_item', SyncWriteItem, queue_size=5)
 
+    # And create another one for the Gazebo simulated gripper
     gazebo_publisher = rospy.Publisher('/gripper_gazebo_controller/command', JointTrajectory, queue_size=1)
 
-    ## END_SUB_TUTORIAL
 
-    ## BEGIN_SUB_TUTORIAL basic_info
-    ##
-    ## Getting Basic Information
-    ## ^^^^^^^^^^^^^^^^^^^^^^^^^
+    # Chess steps subscriber
+    self.subscribe_ena = False
+    rospy.Subscriber("chess_steps", String, self.chess_step_callback)
+
+
+    # Getting Basic Information
     # We can get the name of the reference frame for this robot:
     planning_frame = move_group.get_planning_frame()
     print "============ Planning frame: %s" % planning_frame
@@ -142,10 +99,9 @@ class MoveGroupPythonIntefaceTutorial(object):
 
     # Sometimes for debugging it is useful to print the entire state of the
     # robot:
-    print "============ Printing robot state"
-    print robot.get_current_state()
-    print ""
-    ## END_SUB_TUTORIAL
+    #print "============ Printing robot state"
+    #print robot.get_current_state()
+    #print ""
 
     self.constraints = Constraints()
 
@@ -173,6 +129,34 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.robotis_publisher = robotis_publisher
     self.gazebo_publisher = gazebo_publisher
 
+    # Chess related variables
+    # Y coordinate
+    self.rows = {"1": 0.420, "2": 0.393, "3": 0.366, "4": 0.339, "5": 0.311, "6": 0.284, "7": 0.257, "8": 0.230}
+    # X coordinate
+    self.columns  = {"a": 0.15, "b": 0.123, "c": 0.096, "d": 0.069, "e": 0.041, "f": 0.014, "g": -0.013, "h": -0.040}
+    self.z_high = 0.222
+    self.z_low = 0.17
+    self.z_drop = 0.172
+    self.z_touch_table = 0.165
+    self.z_drop_to_table = 0.16
+    self.x_drop_to_table = -0.1
+    self.y_drop_to_table = 0.3
+
+  def enable_subscribe(self):
+    self.subscribe_ena = True
+
+  def chess_step_callback(self, data):
+    #rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+    if self.subscribe_ena:
+      (steps, hit) = data.data.split(";")
+      print(steps)
+      print(hit)
+      if hit == "True": hit = True
+      else: hit = False
+      self.do_chess_step(steps[:2], steps[2:], hit)
+
+
+
   def set_gripper(self, status):
       if status == "open":
         # Real gripper value
@@ -192,77 +176,89 @@ class MoveGroupPythonIntefaceTutorial(object):
       self.gazebo_publisher.publish(self.gazebo_trajectory_command)
 
 
-  def do_chess_step(self, start, end):
-      # Y coordinate
-      rows = {"1": 0.420, "2": 0.393, "3": 0.366, "4": 0.339, "5": 0.311, "6": 0.284, "7": 0.257, "8": 0.230, "X": 0.3}
-      # X coordinate
-      columns  = {"A": 0.15, "B": 0.123, "C": 0.096, "D": 0.069, "E": 0.041, "F": 0.014, "G": -0.013, "H": -0.040, "X": -0.1}
+  def do_chess_step(self, start, end, hit=False):
 
-      z_high = 0.25
-      z_low = 0.17
-      z_drop = 0.177
-
-      # 1) Go above start position
+      # 0) Make sure that the gripper is open
       self.set_gripper("open")
-      self.go_to_pose_goal(columns[start[0]], rows[start[1]], z_high)
+
+      # 1) If it's a hit:
+      if hit:
+        # 1.1) Go above end position
+        self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_high)
+        time.sleep(0.2)
+
+        # 1.2) Go down
+        self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_low)
+        time.sleep(0.2)
+
+        # 1.3) Grab the figure
+        self.set_gripper("closed")
+        time.sleep(0.2)
+
+        # 1.4) Move up
+        self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_high)
+        time.sleep(0.2)
+
+        # 1.5) Go out of the chess table
+        self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_high)
+        time.sleep(0.2)
+
+        # 1.6) Go down
+        self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_drop_to_table)
+        time.sleep(0.2)
+
+        # 1.7) Release the figure
+        self.set_gripper("open")
+        time.sleep(0.2)
+
+        # 1.8) Move up
+        self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_high)
+        time.sleep(0.2)
+
+      # 2) Go above start position
+      self.go_to_pose_goal(self.columns[start[0]], self.rows[start[1]], self.z_high)
       time.sleep(0.2)
 
-      # 2) Go down
-      #self.go_to_pose_goal(columns[start[0]], rows[start[1]], z_high - (z_high - z_low)/2)
-      #time.sleep(0.1)
-      self.go_to_pose_goal(columns[start[0]], rows[start[1]], z_low)
-      time.sleep(0.1)
+      # 3) Go down
+      self.go_to_pose_goal(self.columns[start[0]], self.rows[start[1]], self.z_low)
+      time.sleep(0.2)
 
-      # 3) Grab the figure
+      # 4) Grab the figure
       self.set_gripper("closed")
       time.sleep(0.2)
 
-      # 4) Move up
-      #self.go_to_pose_goal(columns[start[0]], rows[start[1]], z_high - (z_high - z_low)/2)
-      #time.sleep(0.1)
-      self.go_to_pose_goal(columns[start[0]], rows[start[1]], z_high)
-      time.sleep(0.1)
-
-      # 5) Go above end position
-      self.go_to_pose_goal(columns[end[0]], rows[end[1]], z_high)
+      # 5) Move up
+      self.go_to_pose_goal(self.columns[start[0]], self.rows[start[1]], self.z_high)
       time.sleep(0.2)
 
-      # 6) Move down
-      #self.go_to_pose_goal(columns[end[0]], rows[end[1]], z_high - (z_high - z_drop)/2)
-      #time.sleep(0.1)
-      self.go_to_pose_goal(columns[end[0]], rows[end[1]], z_drop)
-      time.sleep(0.1)
+      # 6) Go above end position
+      self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_high)
+      time.sleep(0.2)
 
-      # 7) Open gripper
+      # 7) Move down
+      self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_drop)
+      time.sleep(0.2)
+
+      # 8) Open gripper
       self.set_gripper("open")
       time.sleep(0.2)
 
-      # 8) Move up
-      #self.go_to_pose_goal(columns[end[0]], rows[end[1]], z_high - (z_high - z_drop)/2)
-      #time.sleep(0.1)
-      self.go_to_pose_goal(columns[end[0]], rows[end[1]], z_high)
-      time.sleep(0.1)
+      # 9) Move up
+      self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_high)
+      time.sleep(0.2)
 
-      # 9) Go home if it's not a hit
-      if end != "XX":
-        self.go_to_home()
+      # 10) Go home
+      self.go_to_home()
       time.sleep(0.2)
 
 
   def go_to_home(self):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    move_group = self.move_group
 
-    ## BEGIN_SUB_TUTORIAL plan_to_joint_state
-    ##
     ## Planning to a Joint Goal
-    ## ^^^^^^^^^^^^^^^^^^^^^^^^
-    ## The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_ so the first
+    ## The UR's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_ so the first
     ## thing we want to do is move it to a slightly better configuration.
     # We can get the joint values from the group and adjust some of the values:
-    joint_goal = move_group.get_current_joint_values()
+    joint_goal = self.move_group.get_current_joint_values()
     joint_goal[0] = -1.5708
     joint_goal[1] = -1.5708
     joint_goal[2] = -1.0472
@@ -270,55 +266,42 @@ class MoveGroupPythonIntefaceTutorial(object):
     joint_goal[4] = 1.5708
     joint_goal[5] = 0.7854
 
-
     # The go command can be called with joint values, poses, or without any
     # parameters if you have already set the pose or joint target for the group
-    move_group.go(joint_goal, wait=True)
+    self.move_group.go(joint_goal, wait=True)
 
     # Calling ``stop()`` ensures that there is no residual movement
-    move_group.stop()
+    self.move_group.stop()
 
-    ## END_SUB_TUTORIAL
+    # Open gripper
     self.set_gripper("open")
 
     # For testing:
-    current_joints = move_group.get_current_joint_values()
+    current_joints = self.move_group.get_current_joint_values()
     return all_close(joint_goal, current_joints, 0.01)
 
-
   def go_to_pose_goal(self, x, y, z):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    move_group = self.move_group
-
-    ## BEGIN_SUB_TUTORIAL plan_to_pose
-    ##
     ## Planning to a Pose Goal
-    ## ^^^^^^^^^^^^^^^^^^^^^^^
     ## We can plan a motion for this group to a desired pose for the
     ## end-effector:
     pose_goal = geometry_msgs.msg.Pose()
-    # set proper quaternion: https://quaternions.online/
+    # set proper quaternion for the vertical orientation: https://quaternions.online/
     pose_goal.orientation.x = -0.383
     pose_goal.orientation.y = 0.924
     
-
     pose_goal.position.x = x
     pose_goal.position.y = y
     pose_goal.position.z = z
 
-    move_group.set_pose_target(pose_goal)
+    self.move_group.set_pose_target(pose_goal)
 
     ## Now, we call the planner to compute the plan and execute it.
-    plan = move_group.go(wait=True)
+    plan = self.move_group.go(wait=True)
     # Calling `stop()` ensures that there is no residual movement
-    move_group.stop()
+    self.move_group.stop()
     # It is always good to clear your targets after planning with poses.
     # Note: there is no equivalent function for clear_joint_value_targets()
-    move_group.clear_pose_targets()
-
-    ## END_SUB_TUTORIAL
+    self.move_group.clear_pose_targets()
 
     # For testing:
     # Note that since this section of code will not be included in the tutorials
@@ -326,17 +309,31 @@ class MoveGroupPythonIntefaceTutorial(object):
     current_pose = self.move_group.get_current_pose().pose
     return all_close(pose_goal, current_pose, 0.01)
 
-  def display_trajectory(self, plan):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    robot = self.robot
-    display_trajectory_publisher = self.display_trajectory_publisher
+  def do_calibration(self):
+    raw_input("============ Press `Enter` to go A8 (down) ...")
+    self.set_gripper("closed")
+    self.go_to_pose_goal(x = self.columns["a"], y = self.rows["8"], z = self.z_touch_table)
+    raw_input("============ Press `Enter` to go H8 (down) ...")
+    self.go_to_pose_goal(x = self.columns["h"], y = self.rows["8"], z = self.z_touch_table)
+    raw_input("============ Press `Enter` to go H1 (down) ...")
+    self.go_to_pose_goal(x = self.columns["h"], y = self.rows["1"], z = self.z_touch_table)
+    raw_input("============ Press `Enter` to go A1 (down) ...")
+    self.go_to_pose_goal(x = self.columns["a"], y = self.rows["1"], z = self.z_touch_table)
+    raw_input("============ Press `Enter` to go A8 (down) ...")
+    self.go_to_pose_goal(x = self.columns["a"], y = self.rows["8"], z = self.z_touch_table)
+    raw_input("============ Press `Enter` to go A8 (up) ...")
+    self.go_to_pose_goal(x = self.columns["a"], y = self.rows["8"], z = self.z_high)
+    raw_input("============ Press `Enter` to go H8 (up) ...")
+    self.go_to_pose_goal(x = self.columns["h"], y = self.rows["8"], z = self.z_high)
+    raw_input("============ Press `Enter` to go H1 (up) ...")
+    self.go_to_pose_goal(x = self.columns["h"], y = self.rows["1"], z = self.z_high)
+    raw_input("============ Press `Enter` to go A1 (up) ...")
+    self.go_to_pose_goal(x = self.columns["a"], y = self.rows["1"], z = self.z_high)
+    raw_input("============ Press `Enter` to go home ...")
+    self.go_to_home()
 
-    ## BEGIN_SUB_TUTORIAL display_trajectory
-    ##
+  def display_trajectory(self, plan):
     ## Displaying a Trajectory
-    ## ^^^^^^^^^^^^^^^^^^^^^^^
     ## You can ask RViz to visualize a plan (aka trajectory) for you. But the
     ## group.plan() method does this automatically so this is not that useful
     ## here (it just displays the same trajectory again):
@@ -345,62 +342,65 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## We populate the trajectory_start with our current robot state to copy over
     ## any AttachedCollisionObjects and add our plan to the trajectory.
     display_trajectory = moveit_msgs.msg.DisplayTrajectory()
-    display_trajectory.trajectory_start = robot.get_current_state()
+    display_trajectory.trajectory_start = self.robot.get_current_state()
     display_trajectory.trajectory.append(plan)
     # Publish
-    display_trajectory_publisher.publish(display_trajectory)
-
-    ## END_SUB_TUTORIAL
+    self.display_trajectory_publisher.publish(display_trajectory)
 
 
   def execute_plan(self, plan):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    move_group = self.move_group
-
-    ## BEGIN_SUB_TUTORIAL execute_plan
-    ##
     ## Executing a Plan
-    ## ^^^^^^^^^^^^^^^^
     ## Use execute if you would like the robot to follow
     ## the plan that has already been computed:
-    move_group.execute(plan, wait=True)
+    self.move_group.execute(plan, wait=True)
 
     ## **Note:** The robot's current joint state must be within some tolerance of the
     ## first waypoint in the `RobotTrajectory`_ or ``execute()`` will fail
-    ## END_SUB_TUTORIAL
-
 
 def main():
   try:
 
-    tutorial = MoveGroupPythonIntefaceTutorial()
+    moveit_commander = MoveGroupPythonInteface()
 
     # Set max velocity
-    tutorial.move_group.set_max_velocity_scaling_factor(0.5)
+    moveit_commander.move_group.set_max_velocity_scaling_factor(0.2)
     # Set tolerances, without that IK cannot do a valid plan
-    tutorial.move_group.set_goal_position_tolerance(0.001)
-    tutorial.move_group.set_goal_orientation_tolerance(0.005)
+    moveit_commander.move_group.set_goal_position_tolerance(0.0005)
+    moveit_commander.move_group.set_goal_orientation_tolerance(0.001)
     
-    print "============ Press `Enter` to go home ..."
-    raw_input()
-    tutorial.go_to_home()
+    raw_input("============ Press `Enter` to go home...")
+    moveit_commander.go_to_home()
+    while 1:
+      print("============ Select mode:")
+      print("============   p: Play")
+      print("============   c: Calibration")
+      print("============   s: Subscribe to chess_steps topic")
+      ret = raw_input()
+      if ret in ["p", "c", "s"]:
+        break
+      else:
+        pass
 
-    print "============ Press `Enter` to start playing..."
-    raw_input()
-    tutorial.do_chess_step("D7", "D5")
-    raw_input()
-    tutorial.do_chess_step("E7", "E6")
-    raw_input()
-    tutorial.do_chess_step("G8", "F6")
-    raw_input()
-    tutorial.do_chess_step("F8", "B4")
-    raw_input()
-    tutorial.do_chess_step("E8", "A4")
-    raw_input()
-    tutorial.do_chess_step("C3", "XX")
-    tutorial.do_chess_step("B4", "C3")
+    if ret == "c":
+      moveit_commander.do_calibration()
+
+    elif ret == "p":
+      raw_input("============ Press `Enter` to start playing...")
+      moveit_commander.do_chess_step("d7", "d5")
+      raw_input("============ Press `Enter` for the next step...")
+      moveit_commander.do_chess_step("e7", "e6")
+      raw_input("============ Press `Enter` for the next step...")
+      moveit_commander.do_chess_step("g8", "f6")
+      raw_input("============ Press `Enter` for the next step...")
+      moveit_commander.do_chess_step("f8", "b4")
+      raw_input("============ Press `Enter` for the next step...")
+      moveit_commander.do_chess_step("e8", "a4")
+      raw_input("============ Press `Enter` for the next step...")
+      moveit_commander.do_chess_step("b4", "c3", hit = True)
+
+    elif ret == "s":
+      moveit_commander.enable_subscribe()
+      rospy.spin()
     
 
   except rospy.ROSInterruptException:
