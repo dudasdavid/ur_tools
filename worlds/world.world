@@ -476,15 +476,15 @@
       <pose frame=''>0.466042 -0.509452 0 0 -0 0</pose>
     </model>
     <state world_name='default'>
-      <sim_time>614 961000000</sim_time>
-      <real_time>52 246940800</real_time>
-      <wall_time>1619367533 956444300</wall_time>
-      <iterations>51690</iterations>
+      <sim_time>712 192000000</sim_time>
+      <real_time>68 115352500</real_time>
+      <wall_time>1619369275 623274000</wall_time>
+      <iterations>66779</iterations>
       <model name='chess_table'>
-        <pose frame=''>0 0.275 1.05 0 -0 1.5708</pose>
+        <pose frame=''>0 0.33125 1.05 0 -0 1.5708</pose>
         <scale>1 1 1</scale>
         <link name='link_0'>
-          <pose frame=''>0 0.274999 1.05 0 -0 1.5708</pose>
+          <pose frame=''>0 0.331249 1.05 0 -0 1.5708</pose>
           <velocity>0 0 0 0 -0 0</velocity>
           <acceleration>0 0 0 0 -0 0</acceleration>
           <wrench>0 0 0 0 -0 0</wrench>
@@ -526,7 +526,7 @@
     </state>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose frame=''>4.2202 -0.52749 2.79848 0 0.221796 2.84247</pose>
+        <pose frame=''>3.04672 -0.285446 2.27342 0 0.221796 2.84247</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
