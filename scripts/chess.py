@@ -130,16 +130,21 @@ class MoveGroupPythonInteface(object):
     self.gazebo_publisher = gazebo_publisher
 
     # Chess related variables
+    ### THESE VALUES ARE SET BASED ON BOARD AND TABLE
     # Y coordinate
-    self.rows = {"1": 0.420, "2": 0.393, "3": 0.366, "4": 0.339, "5": 0.311, "6": 0.284, "7": 0.257, "8": 0.230}
+    self.rows = {"1": 0.463, "2": 0.425, "3": 0.388, "4": 0.350, "5": 0.313, "6": 0.275, "7": 0.238, "8": 0.200}
     # X coordinate
-    self.columns  = {"a": 0.15, "b": 0.123, "c": 0.096, "d": 0.069, "e": 0.041, "f": 0.014, "g": -0.013, "h": -0.040}
-    self.z_high = 0.222
-    self.z_low = 0.17
-    self.z_drop = 0.172
-    self.z_touch_table = 0.165
-    self.z_drop_to_table = 0.16
-    self.x_drop_to_table = -0.1
+    self.columns  = {"a": 0.131, "b": 0.094, "c": 0.056, "d": 0.019, "e": -0.019, "f": -0.056, "g": -0.094, "h": -0.131}
+    self.z_table_offset = 0.06 #0.16 # THIS MUST BE SET TO THE REAL TABLE!
+    ### THESE VALUES ARE SET BASED ON FIGURES
+    self.z_high = self.z_table_offset + 0.062 #0.222
+    self.z_low = self.z_table_offset + 0.01 #0.17
+    self.z_drop = self.z_table_offset + 0.012 #0.172
+    ### THIS VALUE IS USED DURING CALIBRATION
+    self.z_touch_table = self.z_table_offset + 0.005 #THIS IS USED DURING CALIBRATION, IT ALMOST TOUCHES THE TABLE!
+    ### THESE VALUES ARE SET TO BE OUTSIDE THE TABLE
+    self.z_drop_to_table = self.z_table_offset + 0.005
+    self.x_drop_to_table = -0.16
     self.y_drop_to_table = 0.3
 
   def enable_subscribe(self):
