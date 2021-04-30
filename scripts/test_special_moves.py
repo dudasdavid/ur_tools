@@ -1,18 +1,29 @@
 #!/usr/bin/env python3.8
 
 from stockfish import Stockfish
+from Chessnut import Game
 import pprint
 
 stockfish = Stockfish(parameters={"Threads": 2, "Minimum Thinking Time": 30})
+chessgame = Game()
 
 # PROMOTION
 # https://lichess.org/editor/1k6/6PR/8/8/8/8/8/3K4_w_-_-_0_1
 stockfish.set_fen_position("1k6/6PR/8/8/8/8/8/3K4 w - - 0 1")
+chessgame.set_fen("1k6/6PR/8/8/8/8/8/3K4 w - - 0 1")
 
-print(stockfish.get_best_move())
+move = stockfish.get_best_move()
+print(move)
 
 print(stockfish.get_evaluation())
 
+pprint.pprint(stockfish.get_board_visual())
+
+print(chessgame.get_fen())
+chessgame.apply_move(move)
+print(chessgame.get_fen())
+
+stockfish.set_fen_position(chessgame.get_fen())
 pprint.pprint(stockfish.get_board_visual())
 
 # EN PASSANT
