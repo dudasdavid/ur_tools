@@ -257,8 +257,8 @@ class MoveGroupPythonInteface(object):
 
       # 0) Make sure that the gripper is open
       self.set_gripper("open")
-      wait_time = 5
-      gripper_wait_time = 5
+      wait_time = 0.3
+      gripper_wait_time = 1
 
       # 1) If it's a hit:
       if hit:
@@ -272,7 +272,7 @@ class MoveGroupPythonInteface(object):
 
         # 1.3) Grab the figure
         self.set_gripper("closed")
-        time.sleep(wait_time)
+        time.sleep(gripper_wait_time)
 
         # 1.4) Move up
         self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_high)
@@ -288,7 +288,7 @@ class MoveGroupPythonInteface(object):
 
         # 1.7) Release the figure
         self.set_gripper("open")
-        time.sleep(wait_time)
+        time.sleep(gripper_wait_time)
 
         # 1.8) Move up
         self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_high)
@@ -304,7 +304,7 @@ class MoveGroupPythonInteface(object):
 
       # 4) Grab the figure
       self.set_gripper("closed")
-      time.sleep(wait_time)
+      time.sleep(gripper_wait_time)
 
       # 5) Move up
       self.go_to_pose_goal(self.columns[start[0]], self.rows[start[1]], self.z_high)
@@ -320,7 +320,7 @@ class MoveGroupPythonInteface(object):
 
       # 8) Open gripper
       self.set_gripper("open")
-      time.sleep(wait_time)
+      time.sleep(gripper_wait_time)
 
       # 9) Move up
       self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_high)
