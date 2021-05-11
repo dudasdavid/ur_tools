@@ -147,20 +147,21 @@ class MoveGroupPythonInteface(object):
     # Chess related variables
     ### THESE VALUES ARE SET BASED ON BOARD AND TABLE
     # Y coordinate
-    self.rows = {"1": 0.463, "2": 0.425, "3": 0.388, "4": 0.350, "5": 0.313, "6": 0.275, "7": 0.238, "8": 0.200}
+    self.rows = {"1": 0.453, "2": 0.415, "3": 0.378, "4": 0.340, "5": 0.303, "6": 0.265, "7": 0.228, "8": 0.190}
+    
     # X coordinate
     self.columns  = {"a": 0.131, "b": 0.094, "c": 0.056, "d": 0.019, "e": -0.019, "f": -0.056, "g": -0.094, "h": -0.131}
-    self.z_table_offset = 0.06 #0.16 # THIS MUST BE SET TO THE REAL TABLE!
+    self.z_table_offset = 0.135 #0.16 # THIS MUST BE SET TO THE REAL TABLE!
     ### THESE VALUES ARE SET BASED ON FIGURES
-    self.z_high = self.z_table_offset + 0.062 #0.222
+    self.z_high = self.z_table_offset + 0.052 #0.222
     self.z_low = self.z_table_offset + 0.01 #0.17
     self.z_drop = self.z_table_offset + 0.012 #0.172
     ### THIS VALUE IS USED DURING CALIBRATION
     self.z_touch_table = self.z_table_offset + 0.005 #THIS IS USED DURING CALIBRATION, IT ALMOST TOUCHES THE TABLE!
     ### THESE VALUES ARE SET TO BE OUTSIDE THE TABLE
-    self.z_drop_to_table = self.z_table_offset + 0.005
-    self.x_drop_to_table = -0.16
-    self.y_drop_to_table = 0.3
+    self.z_drop_to_table = self.z_table_offset + 0.01
+    self.x_drop_to_table = self.columns["h"] - 0.06
+    self.y_drop_to_table = self.rows["8"]
 
   def enable_subscribe(self):
     self.subscribe_ena = True
@@ -220,7 +221,7 @@ class MoveGroupPythonInteface(object):
   def set_gripper(self, status):
       if status == "open":
         # Real gripper value
-        self.goal_position_msg.value = [620]
+        self.goal_position_msg.value = [580]
         # Gazebo gripper value
         self.gazebo_trajectory_point.positions = [0.7]
 
@@ -293,6 +294,12 @@ class MoveGroupPythonInteface(object):
         # 1.8) Move up
         self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_high)
         time.sleep(wait_time)
+
+        # 1.9) Set nex drop X and Y coordinates
+        self.y_drop_to_table += 0.03
+        if self.y_drop_to_table >= self.rows["2"]:
+          self.y_drop_to_table = self.rows["8"]
+          self.x_drop_to_table -= 0.04
 
       # 2) Go above start position
       self.go_to_pose_goal(self.columns[start[0]], self.rows[start[1]], self.z_high)
@@ -396,6 +403,10 @@ class MoveGroupPythonInteface(object):
     self.go_to_pose_goal(x = self.columns["d"], y = self.rows["8"], z = self.z_touch_table)
     raw_input("============ Press `Enter` to go E8 (down) ...")
     self.go_to_pose_goal(x = self.columns["e"], y = self.rows["8"], z = self.z_touch_table)
+    raw_input("============ Press `Enter` to go F8 (down) ...")
+    self.go_to_pose_goal(x = self.columns["f"], y = self.rows["8"], z = self.z_touch_table)
+    raw_input("============ Press `Enter` to go G8 (down) ...")
+    self.go_to_pose_goal(x = self.columns["g"], y = self.rows["8"], z = self.z_touch_table)
     raw_input("============ Press `Enter` to go H8 (down) ...")
     self.go_to_pose_goal(x = self.columns["h"], y = self.rows["8"], z = self.z_touch_table)
     raw_input("============ Press `Enter` to go H1 (down) ...")
@@ -410,6 +421,10 @@ class MoveGroupPythonInteface(object):
     self.go_to_pose_goal(x = self.columns["d"], y = self.rows["8"], z = self.z_high)
     raw_input("============ Press `Enter` to go E8 (up) ...")
     self.go_to_pose_goal(x = self.columns["e"], y = self.rows["8"], z = self.z_high)
+    raw_input("============ Press `Enter` to go F8 (up) ...")
+    self.go_to_pose_goal(x = self.columns["f"], y = self.rows["8"], z = self.z_high)
+    raw_input("============ Press `Enter` to go G8 (up) ...")
+    self.go_to_pose_goal(x = self.columns["g"], y = self.rows["8"], z = self.z_high)
     raw_input("============ Press `Enter` to go H8 (up) ...")
     self.go_to_pose_goal(x = self.columns["h"], y = self.rows["8"], z = self.z_high)
     raw_input("============ Press `Enter` to go H1 (up) ...")
