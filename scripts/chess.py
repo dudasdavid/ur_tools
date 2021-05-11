@@ -15,6 +15,8 @@ from trajectory_msgs.msg import JointTrajectoryPoint, JointTrajectory
 from robotis_controller_msgs.msg import SyncWriteItem
 from geometry_msgs.msg import Pose
 from moveit_msgs.msg import RobotState, Constraints
+from gazebo_msgs.msg import ContactsState
+from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 
 
 def all_close(goal, actual, tolerance):
@@ -82,6 +84,19 @@ class MoveGroupPythonInteface(object):
     # Chess steps subscriber
     self.subscribe_ena = False
     rospy.Subscriber("chess_steps", String, self.chess_step_callback)
+
+    # Subscribe to touch sensor topics (Gazebo only)
+    rospy.Subscriber("left_contact", ContactsState, self.get_contacts)
+    rospy.Subscriber("right_contact", ContactsState, self.get_contacts)
+    self.attached = False
+    self.attached_to = None
+    self.left_collider = None
+    self.right_collider = None
+    self.attach_srv = rospy.ServiceProxy('/link_attacher_node/attach', Attach)
+    self.attach_srv.wait_for_service()
+    self.detach_srv = rospy.ServiceProxy('/link_attacher_node/detach', Attach)
+    self.detach_srv.wait_for_service()
+    self.detach_time = 0
 
 
     # Getting Basic Information
@@ -160,6 +175,46 @@ class MoveGroupPythonInteface(object):
       else: hit = False
       self.do_chess_step(steps[:2], steps[2:], hit)
 
+  def get_contacts(self, msg):
+    if (len(msg.states) == 0):
+        #rospy.loginfo("No contacts were detected!")
+        self.left_collider = None
+        self.right_collider = None
+    else:
+        
+        if 'rh_p12_rn_l2' in msg.states[0].collision1_name:
+            other_object = msg.states[0].collision2_name.split("::")[0]
+            #rospy.loginfo("Left collision detected with %s." % other_object)
+            self.left_collider = other_object
+        elif 'rh_p12_rn_l2' in msg.states[0].collision2_name:
+            other_object = msg.states[0].collision1_name.split("::")[0]
+            #rospy.loginfo("Left collision detected with %s." % other_object)
+            self.left_collider = other_object
+        if 'rh_p12_rn_r2' in msg.states[0].collision1_name:
+            other_object = msg.states[0].collision2_name.split("::")[0]
+            #rospy.loginfo("Right collision detected with %s." % other_object)
+            self.right_collider = other_object
+        elif 'rh_p12_rn_r2' in msg.states[0].collision2_name:
+            other_object = msg.states[0].collision1_name.split("::")[0]
+            #rospy.loginfo("Right collision detected with %s." % other_object)
+            self.right_collider = other_object
+        else:
+            pass
+            #rospy.loginfo("Unknown collision!")
+        
+        if time.time() > (self.detach_time + 5) and self.attached == False and self.right_collider is not None and self.right_collider == self.left_collider:
+            self.attached = True
+            self.attached_to = self.right_collider
+            req = AttachRequest()
+            req.model_name_1 = "robot"
+            req.link_name_1 = "wrist_3_link"
+            req.model_name_2 = self.attached_to
+            req.link_name_2 = "link_0"
+
+            self.attach_srv.call(req)
+            rospy.loginfo("Attached: %s!" % self.attached_to)
+
+
 
 
   def set_gripper(self, status):
@@ -168,9 +223,26 @@ class MoveGroupPythonInteface(object):
         self.goal_position_msg.value = [620]
         # Gazebo gripper value
         self.gazebo_trajectory_point.positions = [0.7]
+
+        if self.attached == True:
+            req = AttachRequest()
+            req.model_name_1 = "robot"
+            req.link_name_1 = "wrist_3_link"
+            req.model_name_2 = self.attached_to
+            req.link_name_2 = "link_0"
+
+            self.detach_time = time.time()
+            self.detach_srv.call(req)
+            rospy.loginfo("Detached: %s!" % self.attached_to)
+            self.attached = False
+            self.left_collider = None
+            self.right_collider = None
+            self.attached_to = None
+
       else:
         self.goal_position_msg.value = [740]
         self.gazebo_trajectory_point.positions = [1.135]
+        
 
       # Publish real gripper position
       self.robotis_publisher.publish(self.goal_position_msg)
@@ -185,76 +257,78 @@ class MoveGroupPythonInteface(object):
 
       # 0) Make sure that the gripper is open
       self.set_gripper("open")
+      wait_time = 5
+      gripper_wait_time = 5
 
       # 1) If it's a hit:
       if hit:
         # 1.1) Go above end position
         self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_high)
-        time.sleep(0.2)
+        time.sleep(wait_time)
 
         # 1.2) Go down
         self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_low)
-        time.sleep(0.2)
+        time.sleep(wait_time)
 
         # 1.3) Grab the figure
         self.set_gripper("closed")
-        time.sleep(0.2)
+        time.sleep(wait_time)
 
         # 1.4) Move up
         self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_high)
-        time.sleep(0.2)
+        time.sleep(wait_time)
 
         # 1.5) Go out of the chess table
         self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_high)
-        time.sleep(0.2)
+        time.sleep(wait_time)
 
         # 1.6) Go down
         self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_drop_to_table)
-        time.sleep(0.2)
+        time.sleep(wait_time)
 
         # 1.7) Release the figure
         self.set_gripper("open")
-        time.sleep(0.2)
+        time.sleep(wait_time)
 
         # 1.8) Move up
         self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_high)
-        time.sleep(0.2)
+        time.sleep(wait_time)
 
       # 2) Go above start position
       self.go_to_pose_goal(self.columns[start[0]], self.rows[start[1]], self.z_high)
-      time.sleep(0.2)
+      time.sleep(wait_time)
 
       # 3) Go down
       self.go_to_pose_goal(self.columns[start[0]], self.rows[start[1]], self.z_low)
-      time.sleep(0.2)
+      time.sleep(wait_time)
 
       # 4) Grab the figure
       self.set_gripper("closed")
-      time.sleep(0.2)
+      time.sleep(wait_time)
 
       # 5) Move up
       self.go_to_pose_goal(self.columns[start[0]], self.rows[start[1]], self.z_high)
-      time.sleep(0.2)
+      time.sleep(wait_time)
 
       # 6) Go above end position
       self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_high)
-      time.sleep(0.2)
+      time.sleep(wait_time)
 
       # 7) Move down
       self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_drop)
-      time.sleep(0.2)
+      time.sleep(wait_time)
 
       # 8) Open gripper
       self.set_gripper("open")
-      time.sleep(0.2)
+      time.sleep(wait_time)
 
       # 9) Move up
       self.go_to_pose_goal(self.columns[end[0]], self.rows[end[1]], self.z_high)
-      time.sleep(0.2)
+      time.sleep(wait_time)
 
       # 10) Go home
       self.go_to_home()
-      time.sleep(0.2)
+      time.sleep(wait_time)
 
 
   def go_to_home(self):
