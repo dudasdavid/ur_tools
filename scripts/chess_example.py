@@ -52,6 +52,8 @@ pprint.pp(stockfish.get_board_visual())
 while 1:
     while 1:
         ret = input("Your move (e.g. e2e4): ")
+        if ret == "":
+            continue
         if stockfish.is_move_correct(ret):
             print("Valid movement: %s" % ret)
             break
