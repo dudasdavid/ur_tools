@@ -49,6 +49,7 @@ class MoveGroupPythonInteface(object):
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
     moveit_commander.roscpp_initialize(sys.argv)
     rospy.init_node('move_group_python_interface', anonymous=True)
+    self.simulation = False
 
     ## Instantiate a `RobotCommander`_ object. Provides information such as the robot's
     ## kinematic model and the robot's current joint states
@@ -86,17 +87,18 @@ class MoveGroupPythonInteface(object):
     rospy.Subscriber("chess_steps", String, self.chess_step_callback)
 
     # Subscribe to touch sensor topics (Gazebo only)
-    rospy.Subscriber("left_contact", ContactsState, self.get_contacts)
-    rospy.Subscriber("right_contact", ContactsState, self.get_contacts)
-    self.attached = False
-    self.attached_to = None
-    self.left_collider = None
-    self.right_collider = None
-    self.attach_srv = rospy.ServiceProxy('/link_attacher_node/attach', Attach)
-    self.attach_srv.wait_for_service()
-    self.detach_srv = rospy.ServiceProxy('/link_attacher_node/detach', Attach)
-    self.detach_srv.wait_for_service()
-    self.detach_time = 0
+    if self.simulation:
+      rospy.Subscriber("left_contact", ContactsState, self.get_contacts)
+      rospy.Subscriber("right_contact", ContactsState, self.get_contacts)
+      self.attached = False
+      self.attached_to = None
+      self.left_collider = None
+      self.right_collider = None
+      self.attach_srv = rospy.ServiceProxy('/link_attacher_node/attach', Attach)
+      self.attach_srv.wait_for_service()
+      self.detach_srv = rospy.ServiceProxy('/link_attacher_node/detach', Attach)
+      self.detach_srv.wait_for_service()
+      self.detach_time = 0
 
 
     # Getting Basic Information
@@ -160,7 +162,7 @@ class MoveGroupPythonInteface(object):
     self.z_touch_table = self.z_table_offset + 0.005 #THIS IS USED DURING CALIBRATION, IT ALMOST TOUCHES THE TABLE!
     ### THESE VALUES ARE SET TO BE OUTSIDE THE TABLE
     self.z_drop_to_table = self.z_table_offset + 0.01
-    self.x_drop_to_table = self.columns["h"] - 0.06
+    self.x_drop_to_table = self.columns["h"] - 0.08
     self.y_drop_to_table = self.rows["8"]
 
   def enable_subscribe(self):
@@ -225,20 +227,21 @@ class MoveGroupPythonInteface(object):
         # Gazebo gripper value
         self.gazebo_trajectory_point.positions = [0.7]
 
-        if self.attached == True:
-            req = AttachRequest()
-            req.model_name_1 = "robot"
-            req.link_name_1 = "wrist_3_link"
-            req.model_name_2 = self.attached_to
-            req.link_name_2 = "link_0"
+        if self.simulation:
+          if self.attached == True:
+              req = AttachRequest()
+              req.model_name_1 = "robot"
+              req.link_name_1 = "wrist_3_link"
+              req.model_name_2 = self.attached_to
+              req.link_name_2 = "link_0"
 
-            self.detach_time = time.time()
-            self.detach_srv.call(req)
-            rospy.loginfo("Detached: %s!" % self.attached_to)
-            self.attached = False
-            self.left_collider = None
-            self.right_collider = None
-            self.attached_to = None
+              self.detach_time = time.time()
+              self.detach_srv.call(req)
+              rospy.loginfo("Detached: %s!" % self.attached_to)
+              self.attached = False
+              self.left_collider = None
+              self.right_collider = None
+              self.attached_to = None
 
       else:
         self.goal_position_msg.value = [740]
@@ -258,8 +261,13 @@ class MoveGroupPythonInteface(object):
 
       # 0) Make sure that the gripper is open
       self.set_gripper("open")
-      wait_time = 0.3
-      gripper_wait_time = 1
+      if self.simulation:
+        wait_time = 0.5
+        gripper_wait_time = 3
+      else:
+        wait_time = 0.2
+        gripper_wait_time = 0.5
+        
 
       # 1) If it's a hit:
       if hit:
@@ -280,11 +288,11 @@ class MoveGroupPythonInteface(object):
         time.sleep(wait_time)
 
         # 1.5) Go out of the chess table
-        self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_high)
+        self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_high, orientation = 90)
         time.sleep(wait_time)
 
         # 1.6) Go down
-        self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_drop_to_table)
+        self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_drop_to_table, orientation = 90)
         time.sleep(wait_time)
 
         # 1.7) Release the figure
@@ -292,7 +300,7 @@ class MoveGroupPythonInteface(object):
         time.sleep(gripper_wait_time)
 
         # 1.8) Move up
-        self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_high)
+        self.go_to_pose_goal(self.x_drop_to_table, self.y_drop_to_table, self.z_high, orientation = 90)
         time.sleep(wait_time)
 
         # 1.9) Set nex drop X and Y coordinates
@@ -366,14 +374,20 @@ class MoveGroupPythonInteface(object):
     current_joints = self.move_group.get_current_joint_values()
     return all_close(joint_goal, current_joints, 0.01)
 
-  def go_to_pose_goal(self, x, y, z):
+  def go_to_pose_goal(self, x, y, z, orientation = 45):
     ## Planning to a Pose Goal
     ## We can plan a motion for this group to a desired pose for the
     ## end-effector:
     pose_goal = geometry_msgs.msg.Pose()
     # set proper quaternion for the vertical orientation: https://quaternions.online/
-    pose_goal.orientation.x = -0.383
-    pose_goal.orientation.y = 0.924
+    if orientation == 90:
+      # 90 deg gripper position during dropping the pieces
+      pose_goal.orientation.x = -0.707
+      pose_goal.orientation.y = 0.707
+    else:
+      # default 45 deg gripper position
+      pose_goal.orientation.x = -0.383
+      pose_goal.orientation.y = 0.924
     
     pose_goal.position.x = x
     pose_goal.position.y = y
