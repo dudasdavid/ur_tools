@@ -26,6 +26,8 @@ sudo apt install ros-noetic-moveit
 sudo apt install ros-noetic-industrial-robot-status-interface  
 sudo apt install ros-noetic-velocity-controllers  
 sudo apt install ros-noetic-force-torque-sensor-controller  
+sudo apt install ros-noetic-position-controllers  
+sudo apt install ros-noetic-joint-state-controller
 
 git clone https://github.com/roboticsgroup/roboticsgroup_gazebo_plugins  
 git clone https://github.com/ROBOTIS-GIT/ROBOTIS-Framework-msgs  
