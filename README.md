@@ -15,16 +15,17 @@ roslaunch ur3_e_moveit_config moveit_rviz.launch config:=true
 rosrun ur_tools chess.py
 
 
-mandatory ROS packages after fresh install (Noetic):
-sudo apt install socat
-sudo apt install ros-noetic-dynamixel-sdk
-sudo apt install ros-noetic-ur-client-library
-sudo apt install ros-noetic-joint-trajectory-controller
-sudo apt install ros-noetic-moveit
-sudo apt install ros-noetic-industrial-robot-status-interface
-sudo apt install ros-noetic-velocity-controllers
-sudo apt install ros-noetic-force-torque-sensor-controller
+mandatory ROS packages after fresh install (Noetic):  
+sudo apt install socat  
+sudo apt install ros-noetic-dynamixel-sdk  
+sudo apt install ros-noetic-ur-client-library  
+sudo apt install ros-noetic-controller-manager  
+sudo apt install ros-noetic-joint-trajectory-controller  
+sudo apt install ros-noetic-moveit  
+sudo apt install ros-noetic-industrial-robot-status-interface  
+sudo apt install ros-noetic-velocity-controllers  
+sudo apt install ros-noetic-force-torque-sensor-controller  
 
-git clone https://github.com/roboticsgroup/roboticsgroup_gazebo_plugins
-git clone https://github.com/ROBOTIS-GIT/ROBOTIS-Framework-msgs
-git clone https://github.com/MOGI-ROS/gazebo_ros_link_attacher
+git clone https://github.com/roboticsgroup/roboticsgroup_gazebo_plugins  
+git clone https://github.com/ROBOTIS-GIT/ROBOTIS-Framework-msgs  
+git clone https://github.com/MOGI-ROS/gazebo_ros_link_attacher  
