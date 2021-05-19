@@ -19,7 +19,7 @@ if __name__ == "__main__":
     print(robot.get_current_state())
 
     while True:
-        a = raw_input()
+        a = input()
         if a == "q":
             break
 

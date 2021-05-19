@@ -6,7 +6,7 @@ import rospy
 import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
-from math import pi
+from math import pi, dist, fabs, cos
 from std_msgs.msg import String
 from moveit_commander.conversions import pose_to_list
 import time
@@ -21,13 +21,14 @@ from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 
 def all_close(goal, actual, tolerance):
   """
-  Convenience method for testing if a list of values are within a tolerance of their counterparts in another list
+  Convenience method for testing if the values in two lists are within a tolerance of each other.
+  For Pose and PoseStamped inputs, the angle between the two quaternions is compared (the angle 
+  between the identical orientations q and -q is calculated correctly).
   @param: goal       A list of floats, a Pose or a PoseStamped
   @param: actual     A list of floats, a Pose or a PoseStamped
   @param: tolerance  A float
   @returns: bool
   """
-  all_equal = True
   if type(goal) is list:
     for index in range(len(goal)):
       if abs(actual[index] - goal[index]) > tolerance:
@@ -37,7 +38,13 @@ def all_close(goal, actual, tolerance):
     return all_close(goal.pose, actual.pose, tolerance)
 
   elif type(goal) is geometry_msgs.msg.Pose:
-    return all_close(pose_to_list(goal), pose_to_list(actual), tolerance)
+    x0, y0, z0, qx0, qy0, qz0, qw0 = pose_to_list(actual)
+    x1, y1, z1, qx1, qy1, qz1, qw1 = pose_to_list(goal)
+    # Euclidean distance
+    d = dist((x1, y1, z1), (x0, y0, z0))
+    # phi = angle between orientations
+    cos_phi_half = fabs(qx0*qx1 + qy0*qy1 + qz0*qz1 + qw0*qw1)
+    return d <= tolerance and cos_phi_half >= cos(tolerance / 2.0)
 
   return True
 
@@ -104,21 +111,21 @@ class MoveGroupPythonInteface(object):
     # Getting Basic Information
     # We can get the name of the reference frame for this robot:
     planning_frame = move_group.get_planning_frame()
-    print "============ Planning frame: %s" % planning_frame
+    print("============ Planning frame: %s" % planning_frame)
 
     # We can also print the name of the end-effector link for this group:
     eef_link = move_group.get_end_effector_link()
-    print "============ End effector link: %s" % eef_link
+    print("============ End effector link: %s" % eef_link)
 
     # We can get a list of all the groups in the robot:
     group_names = robot.get_group_names()
-    print "============ Available Planning Groups:", robot.get_group_names()
+    print("============ Available Planning Groups:", robot.get_group_names())
 
     # Sometimes for debugging it is useful to print the entire state of the
     # robot:
-    #print "============ Printing robot state"
-    #print robot.get_current_state()
-    #print ""
+    #print("============ Printing robot state")
+    #print(robot.get_current_state())
+    #print("")
 
     self.constraints = Constraints()
 
@@ -153,7 +160,7 @@ class MoveGroupPythonInteface(object):
     
     # X coordinate
     self.columns  = {"a": 0.131, "b": 0.094, "c": 0.056, "d": 0.019, "e": -0.019, "f": -0.056, "g": -0.094, "h": -0.131}
-    self.z_table_offset = 0.135 #0.16 # THIS MUST BE SET TO THE REAL TABLE!
+    self.z_table_offset = 0.335 #0.16 # THIS MUST BE SET TO THE REAL TABLE!
     ### THESE VALUES ARE SET BASED ON FIGURES
     self.z_high = self.z_table_offset + 0.052 #0.222
     self.z_low = self.z_table_offset + 0.01 #0.17
@@ -388,6 +395,10 @@ class MoveGroupPythonInteface(object):
       # default 45 deg gripper position
       pose_goal.orientation.x = -0.383
       pose_goal.orientation.y = 0.924
+
+    #pose_goal.orientation.w= 1
+
+
     
     pose_goal.position.x = x
     pose_goal.position.y = y
@@ -410,42 +421,42 @@ class MoveGroupPythonInteface(object):
     return all_close(pose_goal, current_pose, 0.01)
 
   def do_calibration(self):
-    raw_input("============ Press `Enter` to go A8 (down) ...")
+    input("============ Press `Enter` to go A8 (down) ...")
     self.set_gripper("closed")
     self.go_to_pose_goal(x = self.columns["a"], y = self.rows["8"], z = self.z_touch_table)
-    raw_input("============ Press `Enter` to go D8 (down) ...")
+    input("============ Press `Enter` to go D8 (down) ...")
     self.go_to_pose_goal(x = self.columns["d"], y = self.rows["8"], z = self.z_touch_table)
-    raw_input("============ Press `Enter` to go E8 (down) ...")
+    input("============ Press `Enter` to go E8 (down) ...")
     self.go_to_pose_goal(x = self.columns["e"], y = self.rows["8"], z = self.z_touch_table)
-    raw_input("============ Press `Enter` to go F8 (down) ...")
+    input("============ Press `Enter` to go F8 (down) ...")
     self.go_to_pose_goal(x = self.columns["f"], y = self.rows["8"], z = self.z_touch_table)
-    raw_input("============ Press `Enter` to go G8 (down) ...")
+    input("============ Press `Enter` to go G8 (down) ...")
     self.go_to_pose_goal(x = self.columns["g"], y = self.rows["8"], z = self.z_touch_table)
-    raw_input("============ Press `Enter` to go H8 (down) ...")
+    input("============ Press `Enter` to go H8 (down) ...")
     self.go_to_pose_goal(x = self.columns["h"], y = self.rows["8"], z = self.z_touch_table)
-    raw_input("============ Press `Enter` to go H1 (down) ...")
+    input("============ Press `Enter` to go H1 (down) ...")
     self.go_to_pose_goal(x = self.columns["h"], y = self.rows["1"], z = self.z_touch_table)
-    raw_input("============ Press `Enter` to go A1 (down) ...")
+    input("============ Press `Enter` to go A1 (down) ...")
     self.go_to_pose_goal(x = self.columns["a"], y = self.rows["1"], z = self.z_touch_table)
-    raw_input("============ Press `Enter` to go A8 (down) ...")
+    input("============ Press `Enter` to go A8 (down) ...")
     self.go_to_pose_goal(x = self.columns["a"], y = self.rows["8"], z = self.z_touch_table)
-    raw_input("============ Press `Enter` to go A8 (up) ...")
+    input("============ Press `Enter` to go A8 (up) ...")
     self.go_to_pose_goal(x = self.columns["a"], y = self.rows["8"], z = self.z_high)
-    raw_input("============ Press `Enter` to go D8 (up) ...")
+    input("============ Press `Enter` to go D8 (up) ...")
     self.go_to_pose_goal(x = self.columns["d"], y = self.rows["8"], z = self.z_high)
-    raw_input("============ Press `Enter` to go E8 (up) ...")
+    input("============ Press `Enter` to go E8 (up) ...")
     self.go_to_pose_goal(x = self.columns["e"], y = self.rows["8"], z = self.z_high)
-    raw_input("============ Press `Enter` to go F8 (up) ...")
+    input("============ Press `Enter` to go F8 (up) ...")
     self.go_to_pose_goal(x = self.columns["f"], y = self.rows["8"], z = self.z_high)
-    raw_input("============ Press `Enter` to go G8 (up) ...")
+    input("============ Press `Enter` to go G8 (up) ...")
     self.go_to_pose_goal(x = self.columns["g"], y = self.rows["8"], z = self.z_high)
-    raw_input("============ Press `Enter` to go H8 (up) ...")
+    input("============ Press `Enter` to go H8 (up) ...")
     self.go_to_pose_goal(x = self.columns["h"], y = self.rows["8"], z = self.z_high)
-    raw_input("============ Press `Enter` to go H1 (up) ...")
+    input("============ Press `Enter` to go H1 (up) ...")
     self.go_to_pose_goal(x = self.columns["h"], y = self.rows["1"], z = self.z_high)
-    raw_input("============ Press `Enter` to go A1 (up) ...")
+    input("============ Press `Enter` to go A1 (up) ...")
     self.go_to_pose_goal(x = self.columns["a"], y = self.rows["1"], z = self.z_high)
-    raw_input("============ Press `Enter` to go home ...")
+    input("============ Press `Enter` to go home ...")
     self.go_to_home()
 
   def display_trajectory(self, plan):
@@ -479,19 +490,25 @@ def main():
     moveit_commander = MoveGroupPythonInteface()
 
     # Set max velocity
-    moveit_commander.move_group.set_max_velocity_scaling_factor(0.2)
+    #moveit_commander.move_group.set_max_velocity_scaling_factor(0.2)
     # Set tolerances, without that IK cannot do a valid plan
-    moveit_commander.move_group.set_goal_position_tolerance(0.0005)
-    moveit_commander.move_group.set_goal_orientation_tolerance(0.001)
+    #moveit_commander.move_group.set_goal_position_tolerance(0.01)
+    #moveit_commander.move_group.set_goal_orientation_tolerance(0.01)
     
-    raw_input("============ Press `Enter` to go home...")
+    input("============ Press `Enter` to go home...")
     moveit_commander.go_to_home()
+    print(moveit_commander.move_group.get_current_pose())
+
+    #input("============ Press `Enter` to go home...")
+    #moveit_commander.go_to_pose_goal(0.0,0.3,0.3)
+
+
     while 1:
       print("============ Select mode:")
       print("============   p: Play")
       print("============   c: Calibration")
       print("============   s: Subscribe to chess_steps topic")
-      ret = raw_input()
+      ret = input()
       if ret in ["p", "c", "s"]:
         break
       else:
@@ -501,17 +518,17 @@ def main():
       moveit_commander.do_calibration()
 
     elif ret == "p":
-      raw_input("============ Press `Enter` to start playing...")
+      input("============ Press `Enter` to start playing...")
       moveit_commander.do_chess_step("d7", "d5")
-      raw_input("============ Press `Enter` for the next step...")
+      input("============ Press `Enter` for the next step...")
       moveit_commander.do_chess_step("e7", "e6")
-      raw_input("============ Press `Enter` for the next step...")
+      input("============ Press `Enter` for the next step...")
       moveit_commander.do_chess_step("g8", "f6")
-      raw_input("============ Press `Enter` for the next step...")
+      input("============ Press `Enter` for the next step...")
       moveit_commander.do_chess_step("f8", "b4")
-      raw_input("============ Press `Enter` for the next step...")
+      input("============ Press `Enter` for the next step...")
       moveit_commander.do_chess_step("e8", "a4")
-      raw_input("============ Press `Enter` for the next step...")
+      input("============ Press `Enter` for the next step...")
       moveit_commander.do_chess_step("b4", "c3", hit = True)
 
     elif ret == "s":
