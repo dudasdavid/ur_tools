@@ -20,6 +20,7 @@ sudo apt install socat
 sudo apt install ros-noetic-dynamixel-sdk  
 sudo apt install ros-noetic-ur-client-library  
 sudo apt install ros-noetic-controller-manager  
+sudo apt install ros-noetic-gazebo-ros-control  
 sudo apt install ros-noetic-joint-trajectory-controller  
 sudo apt install ros-noetic-moveit  
 sudo apt install ros-noetic-industrial-robot-status-interface  
