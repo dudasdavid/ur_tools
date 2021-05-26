@@ -153,7 +153,7 @@ class MoveGroupPythonInteface(object):
     
     # X coordinate
     self.columns  = {"a": 0.131, "b": 0.094, "c": 0.056, "d": 0.019, "e": -0.019, "f": -0.056, "g": -0.094, "h": -0.131}
-    self.z_table_offset = 0.135 #0.16 # THIS MUST BE SET TO THE REAL TABLE!
+    self.z_table_offset = 0.115 #0.16 # THIS MUST BE SET TO THE REAL TABLE!
     ### THESE VALUES ARE SET BASED ON FIGURES
     self.z_high = self.z_table_offset + 0.052 #0.222
     self.z_low = self.z_table_offset + 0.01 #0.17
