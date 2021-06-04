@@ -4,6 +4,7 @@ from stockfish import Stockfish
 import pprint
 
 import rospy
+import rospkg
 from std_msgs.msg import String
 
 # Stockfish documentation: https://pypi.org/project/stockfish/
@@ -38,8 +39,14 @@ def update_occupied(step):
 pub = rospy.Publisher('chess_steps', String, queue_size=1)
 rospy.init_node('chess_ai')
 
+rospack = rospkg.RosPack()
+path = rospack.get_path('chess_detector')
+stockfish_path = path + "/stockfish/stockfish_13_linux_x64_bmi2"
+print(stockfish_path)
+stockfish = Stockfish(stockfish_path, parameters={"Threads": 2, "Minimum Thinking Time": 30})
+stockfish.set_skill_level(20)
 
-stockfish = Stockfish(parameters={"Threads": 2, "Minimum Thinking Time": 30})
+print(f"Using Stockfish v{stockfish.get_stockfish_major_version()}, skill level: {stockfish.get_parameters()['Skill Level']}")
 
 steps = []
 occupied = ["a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", 
@@ -47,11 +54,13 @@ occupied = ["a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
             "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
             "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"]
 
-pprint.pp(stockfish.get_board_visual())
+print(stockfish.get_board_visual())
 
 while 1:
     while 1:
         ret = input("Your move (e.g. e2e4): ")
+        if ret == "exit" or ret=="q":
+            exit()
         if ret == "":
             continue
         if stockfish.is_move_correct(ret):
@@ -86,5 +95,5 @@ while 1:
     print("Evaluation:")
     print(stockfish.get_evaluation())
 
-    pprint.pp(stockfish.get_board_visual())
+    print(stockfish.get_board_visual())
 
